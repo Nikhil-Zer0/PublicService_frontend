@@ -44,7 +44,7 @@ export default function ReviewPage() {
     const fetchSummary = async () => {
       try {
         setIsLoadingSummary(true)
-        const res = await fetch(`http://127.0.0.1:8000/summary/${district}/${encodeURIComponent(service)}`)
+        const res = await fetch(`https://publicservice-backend.onrender.com/summary/${district}/${encodeURIComponent(service)}`)
 
         if (!res.ok) {
           throw new Error("Failed to fetch summary")
@@ -79,7 +79,7 @@ export default function ReviewPage() {
 
     try {
       setIsSubmitting(true)
-      const res = await fetch("http://127.0.0.1:8000/submit_feedback/", {
+      const res = await fetch("https://publicservice-backend.onrender.com/submit_feedback/", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
