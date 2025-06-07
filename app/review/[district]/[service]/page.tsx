@@ -9,6 +9,8 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useToast } from "@/hooks/use-toast"
+import { useContext } from "react"
+import { AuthContext } from "@/app/providers"
 
 // Sample district data for display purposes
 const districtMap: Record<string, string> = {
@@ -29,6 +31,9 @@ export default function ReviewPage() {
   const router = useRouter()
   const { toast } = useToast()
 
+  const { getToken } = useContext(AuthContext)
+  const { user } = useContext(AuthContext)
+
   const [feedback, setFeedback] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [response, setResponse] = useState<string | null>(null)
@@ -41,10 +46,18 @@ export default function ReviewPage() {
 
   // Fetch summary on component mount
   useEffect(() => {
+    if (user === null) {
+      router.replace("/login")
+    }
     const fetchSummary = async () => {
       try {
         setIsLoadingSummary(true)
-        const res = await fetch(`https://publicservice-backend.onrender.com/summary/${district}/${encodeURIComponent(service)}`)
+        const token = await getToken()
+        const res = await fetch(`https://publicservice-backend.onrender.com/summary/${district}/${encodeURIComponent(service)}`,{
+          headers:{
+            Authorization: `Bearer ${token}`,
+          }
+        })
 
         if (!res.ok) {
           throw new Error("Failed to fetch summary")
@@ -65,7 +78,7 @@ export default function ReviewPage() {
     }
 
     fetchSummary()
-  }, [district, service, toast])
+  }, [district, service, toast, user,router])
 
   const handleSubmit = async () => {
     if (!feedback.trim()) {
@@ -79,10 +92,12 @@ export default function ReviewPage() {
 
     try {
       setIsSubmitting(true)
+      const token = await getToken()
       const res = await fetch("https://publicservice-backend.onrender.com/submit_feedback/", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           district_name: district,

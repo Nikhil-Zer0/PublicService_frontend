@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useContext } from "react"
 import { useRouter } from "next/navigation"
 import { MapPin, Search } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -9,6 +10,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { cn } from "@/lib/utils"
 import { useToast } from "@/hooks/use-toast"
+import { AuthContext } from "@/app/providers"
 
 // Sample district data - in a real app, this would come from an API
 const districts = [
@@ -68,11 +70,15 @@ export default function HomePage() {
   const [selectedDistrict, setSelectedDistrict] = useState<(typeof districts)[0] | null>(null)
   const [open, setOpen] = useState(false)
   const [isLocating, setIsLocating] = useState(false)
+  const { user } = useContext(AuthContext)
   const router = useRouter()
   const { toast } = useToast()
 
   // Detect user's location on component mount
   useEffect(() => {
+    if (user === null) {
+      router.replace("/login")
+    }
     if (navigator.geolocation && !selectedDistrict) {
       setIsLocating(true)
       navigator.geolocation.getCurrentPosition(
@@ -97,7 +103,7 @@ export default function HomePage() {
         },
       )
     }
-  }, [toast])
+  }, [user, router, toast])
 
   const handleServiceSelect = (service: (typeof services)[0]) => {
     if (!selectedDistrict) {
