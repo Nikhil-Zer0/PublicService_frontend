@@ -6,7 +6,7 @@ import { getAuth } from "firebase/auth"
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
-  apiKey: "AIzaSyD-8b1a9k2e3f4c5b6d7e8f9g0h1i2j3k4",
+  apiKey: "AIzaSyAON0YDztN95wYGRsytumJiiBjBe5XqsbQ",
   authDomain: "public-service-feedback.firebaseapp.com",
   projectId: "public-service-feedback",
   storageBucket: "public-service-feedback.firebasestorage.app",
