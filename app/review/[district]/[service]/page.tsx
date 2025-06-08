@@ -93,7 +93,7 @@ export default function ReviewPage() {
     try {
       setIsSubmitting(true)
       const token = await getToken()
-      const res = await fetch("https://publicservice-backend.onrender.com/submit_feedback/", {
+      const res = await fetch("https://publicservice-backend.onrender.com/submit_feedback", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
