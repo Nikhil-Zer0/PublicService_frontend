@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { ArrowLeft, Send } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -30,9 +30,7 @@ export default function ReviewPage() {
   const params = useParams()
   const router = useRouter()
   const { toast } = useToast()
-
-  const { getToken } = useContext(AuthContext)
-  const { user } = useContext(AuthContext)
+  const { getToken, user } = useContext(AuthContext)
 
   const [feedback, setFeedback] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -46,26 +44,39 @@ export default function ReviewPage() {
 
   // Fetch summary on component mount
   useEffect(() => {
-    if (user === null) {
+    // More robust authentication check
+    if (!user) {
       router.replace("/login")
+      return
     }
+
+    const abortController = new AbortController()
+
     const fetchSummary = async () => {
       try {
         setIsLoadingSummary(true)
         const token = await getToken()
-        const res = await fetch(`https://publicservice-backend.onrender.com/summary/${district}/${encodeURIComponent(service)}`,{
-          headers:{
-            Authorization: `Bearer ${token}`,
-          }
-        })
 
+        const res = await fetch(
+          `https://publicservice-backend.onrender.com/summary/${district}/${encodeURIComponent(service)}`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+            signal: abortController.signal
+          }
+        )
+
+        // Handle HTTP errors
         if (!res.ok) {
-          throw new Error("Failed to fetch summary")
+          throw new Error(`HTTP error! status: ${res.status}`)
         }
 
         const data = await res.json()
         setSummary(data.summary)
-      } catch (error) {
+      } catch (error: any) {
+        if (error.name === 'AbortError') return
+
         console.error("Error fetching summary:", error)
         toast({
           variant: "destructive",
@@ -78,9 +89,11 @@ export default function ReviewPage() {
     }
 
     fetchSummary()
-  }, [district, service, toast, user,router])
 
-  const handleSubmit = async () => {
+    return () => abortController.abort()
+  }, [district, service, getToken, toast, user]) // Removed router
+
+  const handleSubmit = useCallback(async () => {
     if (!feedback.trim()) {
       toast({
         variant: "destructive",
@@ -96,8 +109,8 @@ export default function ReviewPage() {
       const res = await fetch("https://publicservice-backend.onrender.com/submit_feedback", {
         method: "POST",
         headers: {
-          "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           district_name: district,
@@ -106,9 +119,28 @@ export default function ReviewPage() {
         }),
       })
 
+      // Handle HTTP errors
       if (!res.ok) {
-        throw new Error("Failed to submit feedback")
+        const statusCode = res.status;
+        const statusText = res.statusText;
+        const url = res.url;
+
+        let errorMessage = `HTTP Error!\n`;
+        errorMessage += `Status Code: ${statusCode}\n`;
+        errorMessage += `Status Text: ${statusText}\n`;
+        errorMessage += `Requested URL: ${url}\n`;
+
+        // Optionally, try to parse the error body (if any)
+        try {
+          const errorBody = await res.text(); // or res.json() if you expect JSON
+          errorMessage += `Response Body:\n${errorBody}`;
+        } catch (e) {
+          errorMessage += `Could not read response body.`;
+        }
+
+        throw new Error(errorMessage);
       }
+
 
       const data = await res.json()
       setResponse(data.response)
@@ -118,17 +150,17 @@ export default function ReviewPage() {
         title: "Feedback submitted",
         description: "Thank you for your feedback!",
       })
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error submitting feedback:", error)
       toast({
         variant: "destructive",
         title: "Submission failed",
-        description: "Could not submit your feedback. Please try again later.",
+        description: error.message || "Could not submit your feedback. Please try again later.",
       })
     } finally {
       setIsSubmitting(false)
     }
-  }
+  }, [feedback, district, service, getToken, toast])
 
   return (
     <div className="container mx-auto px-4 py-8">

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useContext } from "react"
 import { useRouter } from "next/navigation"
 import { MapPin, Search } from "lucide-react"
@@ -74,36 +74,40 @@ export default function HomePage() {
   const router = useRouter()
   const { toast } = useToast()
 
-  // Detect user's location on component mount
+  const detectLocation = useCallback(() => {
+    setIsLocating(true);
+    const successHandler = (position: GeolocationPosition) => {
+      setSelectedDistrict(districts[0]);
+      setIsLocating(false);
+      toast({
+        title: "Location detected",
+        description: `We've set your district to ${districts[0].name}`,
+      });
+    };
+
+    const errorHandler = (error: GeolocationPositionError) => {
+      console.error("Error getting location:", error);
+      setIsLocating(false);
+      toast({
+        variant: "destructive",
+        title: "Location detection failed",
+        description: "Please select your district manually",
+      });
+    };
+
+    navigator.geolocation.getCurrentPosition(successHandler, errorHandler);
+  }, [toast]);
+
   useEffect(() => {
     if (user === null) {
-      router.replace("/login")
+      router.replace("/login");
+      return;
     }
+    
     if (navigator.geolocation && !selectedDistrict) {
-      setIsLocating(true)
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          // In a real app, you would use the coordinates to determine the district
-          // For demo purposes, we'll just set a default district
-          setSelectedDistrict(districts[0]) // Set to Lucknow as default
-          setIsLocating(false)
-          toast({
-            title: "Location detected",
-            description: `We've set your district to ${districts[0].name}`,
-          })
-        },
-        (error) => {
-          console.error("Error getting location:", error)
-          setIsLocating(false)
-          toast({
-            variant: "destructive",
-            title: "Location detection failed",
-            description: "Please select your district manually",
-          })
-        },
-      )
+      detectLocation();
     }
-  }, [user, router, toast])
+  }, [user, router, toast, selectedDistrict, detectLocation]);
 
   const handleServiceSelect = (service: (typeof services)[0]) => {
     if (!selectedDistrict) {
@@ -111,12 +115,11 @@ export default function HomePage() {
         variant: "destructive",
         title: "No district selected",
         description: "Please select a district first",
-      })
-      return
+      });
+      return;
     }
-
-    router.push(`/review/${selectedDistrict.code}/${encodeURIComponent(service.name)}`)
-  }
+    router.push(`/review/${selectedDistrict.code}/${encodeURIComponent(service.name)}`);
+  };
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -170,37 +173,15 @@ export default function HomePage() {
           </div>
 
           <Button
-            variant="outline"
-            size="icon"
-            onClick={() => {
-              setIsLocating(true)
-              navigator.geolocation.getCurrentPosition(
-                (position) => {
-                  // In a real app, you would use the coordinates to determine the district
-                  setSelectedDistrict(districts[0]) // Set to Lucknow for demo
-                  setIsLocating(false)
-                  toast({
-                    title: "Location detected",
-                    description: `We've set your district to ${districts[0].name}`,
-                  })
-                },
-                (error) => {
-                  console.error("Error getting location:", error)
-                  setIsLocating(false)
-                  toast({
-                    variant: "destructive",
-                    title: "Location detection failed",
-                    description: "Please select your district manually",
-                  })
-                },
-              )
-            }}
-            disabled={isLocating}
-            className="relative"
-          >
-            <MapPin className={cn("h-4 w-4", isLocating && "animate-pulse")} />
-            <span className="sr-only">Detect location</span>
-          </Button>
+          variant="outline"
+          size="icon"
+          onClick={detectLocation}
+          disabled={isLocating}
+          className="relative"
+        >
+          <MapPin className={cn("h-4 w-4", isLocating && "animate-pulse")} />
+          <span className="sr-only">Detect location</span>
+        </Button>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -221,13 +202,12 @@ export default function HomePage() {
               </CardContent>
               <CardFooter className="pt-2">
                 <Button
-                  variant="ghost"
-                  className="w-full justify-between group"
-                  onClick={() => handleServiceSelect(service)}
-                >
-                  <span>Provide Feedback</span>
-                  <span className="transform transition-transform group-hover:translate-x-1">→</span>
-                </Button>
+                variant="ghost"
+                className="w-full justify-between group"
+              >
+                <span>Provide Feedback</span>
+                <span className="transform transition-transform group-hover:translate-x-1">→</span>
+              </Button>
               </CardFooter>
             </Card>
           ))}
